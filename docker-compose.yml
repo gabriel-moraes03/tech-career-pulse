@@ -18,5 +18,20 @@ services:
       - "6379:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD}
 
+  backend:
+    build: ./backend/tech-career-pulse
+    container_name: backend_app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres_db:5432/tech_career_pulse
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+
 volumes:
   postgres_data:
