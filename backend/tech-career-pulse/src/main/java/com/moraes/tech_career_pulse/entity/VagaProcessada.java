@@ -1,5 +1,6 @@
 package com.moraes.tech_career_pulse.entity;
 
+import com.moraes.tech_career_pulse.entity.enums.ModeloVaga;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,8 +30,11 @@ public class VagaProcessada {
 
     private String senioridade;
 
-    @Column(nullable = false)
     private String localizacao;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ModeloVaga modelo;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -40,10 +44,11 @@ public class VagaProcessada {
     )
     private Set<Skill> skills = new HashSet<>();
 
-    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao) {
+    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao, ModeloVaga modelo) {
         this.titulo = titulo;
         this.empresa = empresa;
         this.senioridade = senioridade;
         this.localizacao = localizacao;
+        this.modelo = modelo;
     }
 }

@@ -1,13 +1,13 @@
 package com.moraes.tech_career_pulse.entity.enums;
 
-public enum Modelo {
+public enum ModeloVaga {
     PRESENCIAL("Presencial"),
     HIBRIDO("Híbrido"),
     REMOTO("Remoto");
 
     private final String label;
 
-    Modelo(String label) {
+    ModeloVaga(String label) {
         this.label = label;
     }
 

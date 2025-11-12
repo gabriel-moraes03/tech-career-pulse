@@ -1,0 +1,3 @@
+ALTER TABLE vaga_bruta
+    ALTER COLUMN localizacao DROP NOT NULL,
+    ADD COLUMN modelo VARCHAR(25) NOT NULL;

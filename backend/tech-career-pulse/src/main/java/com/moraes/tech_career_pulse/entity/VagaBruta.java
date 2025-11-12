@@ -1,5 +1,6 @@
 package com.moraes.tech_career_pulse.entity;
 
+import com.moraes.tech_career_pulse.entity.enums.ModeloVaga;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,7 +30,6 @@ public class VagaBruta {
     @Column(nullable = false)
     private String empresa;
 
-    @Column(nullable = false)
     private String localizacao;
 
     @Column(nullable = false, unique = true)
@@ -41,7 +41,11 @@ public class VagaBruta {
     @Column(nullable = false)
     private boolean processada = false;
 
-    public VagaBruta(String titulo, String descricao, String empresa, String localizacao, String url, LocalDateTime dataColeta) {
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ModeloVaga modelo;
+
+    public VagaBruta(String titulo, String descricao, String empresa, String localizacao, String url, LocalDateTime dataColeta, ModeloVaga modelo) {
         this.titulo = titulo;
         this.descricao = descricao;
         this.empresa = empresa;
@@ -49,5 +53,6 @@ public class VagaBruta {
         this.url = url;
         this.dataColeta = dataColeta;
         this.processada = false;
+        this.modelo = modelo;
     }
 }
