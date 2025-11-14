@@ -45,7 +45,10 @@ public class VagaBruta {
     @Column(nullable = false)
     private ModeloVaga modelo;
 
-    public VagaBruta(String titulo, String descricao, String empresa, String localizacao, String url, LocalDateTime dataColeta, ModeloVaga modelo) {
+    @Column(name = "palavra_chave", nullable = false)
+    private String palavraChave;
+
+    public VagaBruta(String titulo, String descricao, String empresa, String localizacao, String url, LocalDateTime dataColeta, ModeloVaga modelo, String palavraChave) {
         this.titulo = titulo;
         this.descricao = descricao;
         this.empresa = empresa;
@@ -54,5 +57,6 @@ public class VagaBruta {
         this.dataColeta = dataColeta;
         this.processada = false;
         this.modelo = modelo;
+        this.palavraChave = palavraChave;
     }
 }

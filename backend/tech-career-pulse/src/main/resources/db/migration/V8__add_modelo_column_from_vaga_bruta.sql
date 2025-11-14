@@ -1,0 +1,2 @@
+ALTER TABLE vaga_bruta
+    ADD COLUMN modelo VARCHAR(25) NOT NULL;

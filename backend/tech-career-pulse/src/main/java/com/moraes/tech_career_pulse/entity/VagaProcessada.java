@@ -32,6 +32,9 @@ public class VagaProcessada {
 
     private String localizacao;
 
+    @Column(name = "palavra_chave", nullable = false)
+    private String palavraChave;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ModeloVaga modelo;
@@ -44,11 +47,12 @@ public class VagaProcessada {
     )
     private Set<Skill> skills = new HashSet<>();
 
-    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao, ModeloVaga modelo) {
+    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao, ModeloVaga modelo, String palavraChave) {
         this.titulo = titulo;
         this.empresa = empresa;
         this.senioridade = senioridade;
         this.localizacao = localizacao;
         this.modelo = modelo;
+        this.palavraChave = palavraChave;
     }
 }
