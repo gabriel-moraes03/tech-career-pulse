@@ -6,13 +6,15 @@ import os
 import re
 import uuid
 import datetime
+import time
+import random
 
 dotenv.load_dotenv()
 
 def salvar_vaga(conn, dados_vaga):
     sql = """
-        INSERT INTO vaga_bruta (id, titulo, descricao, empresa, localizacao, url, data_coleta, processada, modelo)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO vaga_bruta (id, titulo, descricao, empresa, localizacao, url, data_coleta, processada, modelo, palavra_chave)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (url) DO NOTHING;
     """
 
@@ -27,7 +29,8 @@ def salvar_vaga(conn, dados_vaga):
             dados_vaga['url'],
             dados_vaga['data_coleta'],
             dados_vaga['processada'],
-            dados_vaga['modelo']
+            dados_vaga['modelo'],
+            dados_vaga['palavra_chave']
         ))
         conn.commit()
         print(f"     [DB] Vaga salva: {dados_vaga['titulo'][:40]}...")
@@ -59,7 +62,10 @@ try:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
     
-        context = browser.new_context()
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
+        )
+
         page = context.new_page()
 
         # Pra agilizar, bloqueia estilos, fontes, imagens, etc
@@ -82,7 +88,7 @@ try:
 
             next_button = page.locator('[aria-label="Próxima página"]')
 
-            while next_button.is_enabled():
+            while True:
 
                 loc_cads_vagas = page.locator('[aria-label^="Ir para vaga "]')
                 lista_cards_vagas = loc_cads_vagas.all()
@@ -105,7 +111,9 @@ try:
 
                         seletor_req = '[data-testid="section-Requisitos e qualificações-title"] + div ul li'
                         seletor_resp = '[data-testid="section-Responsabilidades e atribuições-title"] + div ul li'
-                        seletor_final_ou = f"{seletor_req}, {seletor_resp}"
+                        seletor_excessao_p_resp = '[data-testid="section-Responsabilidades e atribuições-title"] + div p'
+                        seletor_excessao_p_req = '[data-testid="section-Requisitos e qualificações-title"] + div p'
+                        seletor_final_ou = f"{seletor_req}, {seletor_resp}, {seletor_excessao_p_resp}, {seletor_excessao_p_req}"
                     
                         loc_combinado = page_vaga.locator(seletor_final_ou)
                         lista_completa = loc_combinado.all_text_contents()
@@ -133,10 +141,14 @@ try:
                             "url": link_da_vaga,
                             "data_coleta": datetime.datetime.now(),
                             "processada": False,
-                            "modelo": modelo_vaga
+                            "modelo": modelo_vaga,
+                            "palavra_chave": termo
                         }
 
                         salvar_vaga(db_conn, dados_para_salvar)
+
+                        pausa = random.uniform(0.5, 1.5) # Pausa entre 0.5 e 1.5 segundos
+                        time.sleep(pausa)
                     
                     except Exception as e:
                         print(f"    ERRO ao processar a vaga {link_da_vaga}: {e}")
@@ -145,6 +157,9 @@ try:
                             page_vaga.close()
                         if 'page_empresa' in locals() and not page_empresa.is_closed():
                             page_empresa.close()
+
+                if not next_button.is_enabled():
+                    break
 
                 next_button.click()
                 page.wait_for_load_state("domcontentloaded")
