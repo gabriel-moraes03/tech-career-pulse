@@ -32,12 +32,14 @@ public class VagaProcessada {
 
     private String localizacao;
 
-    @Column(name = "palavra_chave", nullable = false)
-    private String palavraChave;
+    private String area;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ModeloVaga modelo;
+
+    @Column(nullable = false)
+    private String url;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -47,12 +49,13 @@ public class VagaProcessada {
     )
     private Set<Skill> skills = new HashSet<>();
 
-    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao, ModeloVaga modelo, String palavraChave) {
+    public VagaProcessada(String titulo, String empresa, String senioridade, String localizacao, ModeloVaga modelo, String area, String url) {
         this.titulo = titulo;
         this.empresa = empresa;
         this.senioridade = senioridade;
         this.localizacao = localizacao;
         this.modelo = modelo;
-        this.palavraChave = palavraChave;
+        this.area = area;
+        this.url = url;
     }
 }
