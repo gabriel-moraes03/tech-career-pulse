@@ -34,7 +34,6 @@ public class VagaProcessada {
 
     private String area;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ModeloVaga modelo;
 

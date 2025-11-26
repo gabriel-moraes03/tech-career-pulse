@@ -14,4 +14,13 @@ public enum ModeloVaga {
     public String getLabel() {
         return label;
     }
+
+    public static ModeloVaga fromLabel(String text) {
+        for (ModeloVaga b : ModeloVaga.values()) {
+            if (b.label.equalsIgnoreCase(text)) {
+                return b;
+            }
+        }
+        return null;
+    }
 }
