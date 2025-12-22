@@ -1,0 +1,2028 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds}
+
+\geometry{margin=2.5cm}
+
+\definecolor{primarycolor}{RGB}{41, 128, 185}
+\definecolor{secondarycolor}{RGB}{52, 152, 219}
+\definecolor{accentcolor}{RGB}{231, 76, 60}
+
+\title{\textbf{Tech Career Pulse} \\
+\large Arquitetura de uma Plataforma de Inteligência de Mercado Tech \\
+com IA Generativa}
+\author{Gabriel Moraes}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%=============================================================================
+\section{Visão Geral do Projeto}
+%=============================================================================
+
+\subsection{Problema a Resolver}
+
+O mercado de tecnologia é extremamente dinâmico, com novas ferramentas, linguagens e frameworks surgindo constantemente. Profissionais de tech enfrentam dificuldades em:
+
+\begin{itemize}
+    \item \textbf{Identificar tendências de mercado}: Quais tecnologias estão em alta demanda?
+    \item \textbf{Planejar carreira}: Qual caminho seguir para alcançar um objetivo profissional?
+    \item \textbf{Encontrar vagas compatíveis}: Vagas que realmente fazem sentido para o perfil atual
+    \item \textbf{Desenvolver portfólio}: Quais projetos construir para se destacar?
+\end{itemize}
+
+\subsection{Solução Proposta}
+
+\textbf{Tech Career Pulse} é uma plataforma de inteligência de mercado que:
+
+\begin{enumerate}
+    \item \textbf{Coleta} automaticamente milhares de vagas de emprego através de web scraping
+    \item \textbf{Processa} essas vagas extraindo informações estruturadas (skills, senioridade, localização)
+    \item \textbf{Analisa} tendências de mercado e gera insights visuais
+    \item \textbf{Utiliza IA Generativa} para criar experiências personalizadas:
+    \begin{itemize}
+        \item Match inteligente entre perfil do usuário e vagas
+        \item Roadmaps de carreira personalizados
+        \item Sugestões de projetos para portfólio
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Diferencial Competitivo}
+
+\begin{itemize}
+    \item \textbf{Dados reais}: Não é apenas um chatbot genérico, usa dados reais do mercado
+    \item \textbf{IA contextual}: IA integrada em workflows específicos, não chat genérico
+    \item \textbf{Foco em tech}: Especializado no mercado de tecnologia brasileiro
+    \item \textbf{Open source}: Demonstra habilidades técnicas completas
+\end{itemize}
+
+%=============================================================================
+\section{Arquitetura da Plataforma}
+%=============================================================================
+
+\subsection{Visão de Alto Nível}
+
+A plataforma segue arquitetura de 3 camadas com pipeline de dados isolado:
+
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────┐
+│                     FRONTEND (React)                     │
+│  - Dashboard de Insights                                 │
+│  - Página de Vagas com Match IA                         │
+│  - Página de Roadmap Personalizado                      │
+│  - Página de Projetos para Portfólio                    │
+└────────────────────┬────────────────────────────────────┘
+                     │ HTTP/REST
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              BACKEND (Spring Boot 3.5.7)                │
+│  ┌───────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Insights    │  │   Match IA   │  │   Roadmap    │ │
+│  │   Service     │  │   Service    │  │   Service    │ │
+│  └───────────────┘  └──────────────┘  └──────────────┘ │
+│  ┌───────────────────────────────────────────────────┐ │
+│  │          IA Orchestration Service                 │ │
+│  │  - Cache inteligente (hash-based)                 │ │
+│  │  - Integração com Gemini/OpenAI                   │ │
+│  │  - Rate limiting                                   │ │
+│  └───────────────────────────────────────────────────┘ │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                  CAMADA DE DADOS                        │
+│  ┌──────────────┐      ┌──────────────┐                │
+│  │  PostgreSQL  │      │    Redis     │                │
+│  │  - Vagas     │      │  - Cache BI  │                │
+│  │  - Skills    │      │  - Cache IA  │                │
+│  │  - Interações│      │              │                │
+│  └──────────────┘      └──────────────┘                │
+└─────────────────────────────────────────────────────────┘
+                     ▲
+                     │
+┌─────────────────────────────────────────────────────────┐
+│              DATA PIPELINE (Python)                     │
+│  ┌──────────┐   ┌──────────┐   ┌────────────┐         │
+│  │ Scraper  │ → │ Processor│ → │  Enricher  │         │
+│  │(Playwright)│  │  (NLP)   │   │  (Skills)  │         │
+│  └──────────┘   └──────────┘   └────────────┘         │
+│                                                         │
+│  Scheduler: Cron/Airflow (executa diariamente)        │
+└─────────────────────────────────────────────────────────┘
+                     ▲
+                     │
+              [ Gupy.io, LinkedIn, Indeed... ]
+\end{verbatim}
+
+\subsection{Componentes Principais}
+
+\subsubsection{Data Pipeline (Python)}
+
+\textbf{Responsabilidades:}
+\begin{itemize}
+    \item Coletar vagas de múltiplas fontes
+    \item Extrair informações estruturadas
+    \item Detectar skills usando NLP/Pattern Matching
+    \item Inferir senioridade
+    \item Persistir dados normalizados
+\end{itemize}
+
+\textbf{Tecnologias:}
+\begin{itemize}
+    \item Playwright (web scraping)
+    \item psycopg2 (PostgreSQL)
+    \item unidecode (normalização de texto)
+    \item Agendamento: Cron ou Apache Airflow
+\end{itemize}
+
+\subsubsection{Backend API (Spring Boot)}
+
+\textbf{Responsabilidades:}
+\begin{itemize}
+    \item Expor APIs REST para frontend
+    \item Implementar lógica de negócio
+    \item Orquestrar chamadas para IA
+    \item Gerenciar cache (Redis)
+    \item Aplicar rate limiting
+\end{itemize}
+
+\textbf{Tecnologias:}
+\begin{itemize}
+    \item Spring Boot 3.5.7
+    \item Spring Data JPA
+    \item Spring Cache (Redis)
+    \item WebClient (chamadas HTTP para IA)
+    \item Flyway (migrations)
+\end{itemize}
+
+\subsubsection{Frontend (React)}
+
+\textbf{Responsabilidades:}
+\begin{itemize}
+    \item Interface responsiva e intuitiva
+    \item Visualizações de dados (gráficos)
+    \item Formulários para interação com IA
+    \item Gestão de estado
+\end{itemize}
+
+\textbf{Tecnologias:}
+\begin{itemize}
+    \item React 18
+    \item React Router (navegação)
+    \item Axios (HTTP client)
+    \item Recharts ou D3.js (visualizações)
+    \item Tailwind CSS ou Material-UI (estilo)
+\end{itemize}
+
+\subsubsection{IA Generativa (Gemini/OpenAI)}
+
+\textbf{Responsabilidades:}
+\begin{itemize}
+    \item Gerar roadmaps personalizados
+    \item Calcular match entre perfil e vagas
+    \item Sugerir projetos de portfólio
+    \item Análise de gaps de skills
+\end{itemize}
+
+\textbf{Integração:}
+\begin{itemize}
+    \item Google Gemini API (recomendado - free tier generoso)
+    \item Alternativa: OpenAI GPT-4o-mini
+    \item Cache obrigatório (hash de inputs)
+\end{itemize}
+
+%=============================================================================
+\section{Funcionalidades Detalhadas}
+%=============================================================================
+
+\subsection{Feature 1: Dashboard de Insights}
+
+\textbf{Status:} \textcolor{green}{JÁ IMPLEMENTADO}
+
+\textbf{Objetivo:} Apresentar análises do mercado de trabalho tech em tempo real.
+
+\textbf{Visualizações:}
+\begin{enumerate}
+    \item \textbf{Top 10 Tecnologias Mais Demandadas}
+    \begin{itemize}
+        \item Tipo: Gráfico de barras horizontal
+        \item Dados: COUNT de vagas por skill
+        \item Insight: "Java está em 1.234 vagas (23\% do total)"
+    \end{itemize}
+
+    \item \textbf{Distribuição por Senioridade}
+    \begin{itemize}
+        \item Tipo: Gráfico de pizza
+        \item Dados: Júnior, Pleno, Sênior, Especialista
+        \item Insight: "60\% das vagas são para Pleno ou acima"
+    \end{itemize}
+
+    \item \textbf{Modelo de Trabalho}
+    \begin{itemize}
+        \item Tipo: Gráfico de barras
+        \item Dados: Presencial, Híbrido, Remoto
+        \item Insight: "45\% das vagas são remotas"
+    \end{itemize}
+
+    \item \textbf{Top 10 Cidades}
+    \begin{itemize}
+        \item Tipo: Lista ranqueada
+        \item Dados: Localização + COUNT
+        \item Insight: "São Paulo lidera com 2.345 vagas"
+    \end{itemize}
+
+    \item \textbf{Áreas Mais Quentes}
+    \begin{itemize}
+        \item Tipo: Treemap ou barras
+        \item Dados: Backend, Frontend, Full Stack, DevOps, Data
+        \item Insight: "Backend representa 40\% das vagas"
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Backend (já existe):}
+\begin{verbatim}
+GET /api/insights/skills       → Top 10 skills
+GET /api/insights/senioridade  → Distribuição por nível
+GET /api/insights/modelos      → Presencial/Híbrido/Remoto
+GET /api/insights/localizacao  → Top 10 cidades
+GET /api/insights/area         → Áreas (Backend, Frontend, etc)
+\end{verbatim}
+
+\textbf{O que falta:}
+\begin{itemize}
+    \item Frontend React consumindo esses endpoints
+    \item Gráficos interativos (hover, click to filter)
+    \item Filtros por período (últimos 7 dias, 30 dias, etc)
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Feature 2: Match Inteligente de Vagas}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\textbf{Objetivo:} Conectar perfil do usuário com vagas compatíveis usando IA.
+
+\textbf{Fluxo do Usuário:}
+\begin{enumerate}
+    \item Usuário acessa página "Vagas"
+    \item Preenche formulário de perfil:
+    \begin{itemize}
+        \item Skills (multi-select): Java, React, Docker...
+        \item Senioridade: Júnior / Pleno / Sênior / Especialista
+        \item Modelo preferido: Presencial / Híbrido / Remoto
+        \item Localização preferida: (opcional)
+        \item Área de interesse: Backend / Frontend / Full Stack / etc
+    \end{itemize}
+    \item Clica em "Buscar Vagas Compatíveis"
+    \item Sistema processa:
+    \begin{enumerate}
+        \item Backend busca vagas candidatas (filtro no banco)
+        \item Envia para IA: perfil + lista de vagas
+        \item IA retorna ranking com score de compatibilidade
+    \end{enumerate}
+    \item Resultado exibido em cards ordenados:
+\end{enumerate}
+
+\textbf{Exemplo de Card de Vaga:}
+\begin{verbatim}
+┌─────────────────────────────────────────────┐
+│ 🎯 95% de Compatibilidade                  │
+│                                             │
+│ Desenvolvedor Full Stack Pleno             │
+│ Empresa XYZ Tech | Remoto | São Paulo      │
+│                                             │
+│ ✅ Match em Skills:                        │
+│    Java, Spring Boot, React, Docker        │
+│                                             │
+│ ❌ Skills que faltam:                      │
+│    AWS, Kubernetes                          │
+│                                             │
+│ 💡 Por que esse match?                     │
+│ "Esta vaga combina perfeitamente com seu   │
+│  perfil Pleno em Backend. A stack é 80%    │
+│  compatível e a empresa aceita Remoto."    │
+│                                             │
+│ [Ver Detalhes] [Candidatar-se]             │
+└─────────────────────────────────────────────┘
+\end{verbatim}
+
+\textbf{Backend necessário:}
+\begin{verbatim}
+POST /api/vagas/match
+Body: {
+  "skills": ["Java", "Spring Boot", "React"],
+  "senioridade": "Pleno",
+  "modelo": "Remoto",
+  "localizacao": "São Paulo",
+  "area": "Backend"
+}
+
+Response: {
+  "matches": [
+    {
+      "vagaId": "uuid",
+      "titulo": "Dev Full Stack Pleno",
+      "empresa": "XYZ Tech",
+      "localizacao": "São Paulo",
+      "modelo": "Remoto",
+      "compatibilidade": 95,
+      "skillsMatch": ["Java", "Spring Boot", "React"],
+      "skillsFaltam": ["AWS", "Kubernetes"],
+      "motivo": "Explicação gerada pela IA...",
+      "url": "https://..."
+    }
+  ],
+  "fromCache": false,
+  "tokensUtilizados": 450
+}
+\end{verbatim}
+
+\textbf{Lógica do Backend:}
+\begin{enumerate}
+    \item \textbf{Pré-filtro no banco (performance)}:
+    \begin{itemize}
+        \item Buscar vagas que tenham pelo menos 1 skill do usuário
+        \item Filtrar por senioridade (exata ou -1 nível)
+        \item Filtrar por modelo (se especificado)
+        \item Limite: top 50 vagas candidatas
+    \end{itemize}
+
+    \item \textbf{Verificar cache}:
+    \begin{itemize}
+        \item Gerar hash do perfil do usuário
+        \item Buscar em \texttt{interacao\_ia} por (tipo=MATCH, hash\_input)
+        \item Se existe e é recente (< 24h), retornar do cache
+    \end{itemize}
+
+    \item \textbf{Chamar IA}:
+    \begin{itemize}
+        \item Montar prompt estruturado:
+        \begin{itemize}
+            \item Perfil do usuário
+            \item Lista de 50 vagas candidatas (JSON)
+            \item Instrução: ranquear por compatibilidade
+        \end{itemize}
+        \item IA retorna JSON com ranking
+    \end{itemize}
+
+    \item \textbf{Salvar no cache}:
+    \begin{itemize}
+        \item Persistir em \texttt{interacao\_ia}
+        \item Associar hash\_input para futuras consultas
+    \end{itemize}
+
+    \item \textbf{Retornar para frontend}:
+    \begin{itemize}
+        \item JSON com top 10 matches
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Prompt para IA (exemplo):}
+\begin{verbatim}
+Você é um especialista em recrutamento tech.
+
+PERFIL DO CANDIDATO:
+- Skills: Java, Spring Boot, React, Docker, PostgreSQL
+- Senioridade: Pleno
+- Modelo preferido: Remoto
+- Área: Backend
+
+VAGAS DISPONÍVEIS (JSON):
+[
+  {
+    "id": "123",
+    "titulo": "Dev Backend Pleno",
+    "empresa": "XYZ",
+    "skills": ["Java", "Spring Boot", "AWS", "Kubernetes"],
+    "senioridade": "Pleno",
+    "modelo": "Remoto"
+  },
+  ...mais 49 vagas...
+]
+
+TAREFA:
+Analise e retorne um JSON com os top 10 matches, ordenados
+por compatibilidade (0-100). Para cada match, inclua:
+- vagaId
+- compatibilidade (número 0-100)
+- skillsMatch (array de skills que batem)
+- skillsFaltam (array de skills que faltam)
+- motivo (1 frase explicando o match)
+
+Formato de saída:
+{
+  "matches": [ ... ]
+}
+\end{verbatim}
+
+\textbf{Componentes a criar:}
+\begin{itemize}
+    \item \textbf{Frontend}: Página VagasMatch.jsx
+    \item \textbf{Backend}:
+    \begin{itemize}
+        \item VagaMatchController
+        \item VagaMatchService
+        \item DTO: MatchRequestDTO, MatchResponseDTO
+        \item Query customizada: findCandidateVagas()
+    \end{itemize}
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Feature 3: Roadmap Personalizado de Carreira}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\textbf{Objetivo:} Gerar plano de estudos estruturado para alcançar objetivo de carreira.
+
+\textbf{Fluxo do Usuário:}
+\begin{enumerate}
+    \item Acessa página "Meu Roadmap"
+    \item Preenche formulário:
+    \begin{itemize}
+        \item Nível atual: Júnior / Pleno / Sênior / Iniciante
+        \item Objetivo: "Desenvolvedor Backend Sênior"
+        \item Stack desejada: [Java, Spring Boot, Microserviços, Kafka]
+        \item Tempo disponível: "6 meses" / "1 ano" / "2 anos"
+        \item Dedicação semanal: "5 horas" / "10 horas" / "20 horas"
+    \end{itemize}
+    \item Clica em "Gerar Roadmap"
+    \item IA processa e retorna roadmap estruturado em fases
+    \item Frontend exibe como timeline interativa
+\end{enumerate}
+
+\textbf{Visualização do Roadmap (Timeline):}
+\begin{verbatim}
+════════════════════════════════════════════════════════════
+  ROADMAP: Júnior → Desenvolvedor Backend Sênior (6 meses)
+════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────┐
+│ FASE 1: Fundamentos (Mês 1-2)                          │
+├─────────────────────────────────────────────────────────┤
+│ Objetivos:                                              │
+│  ☐ Dominar Java 17+ (records, sealed classes)         │
+│  ☐ Spring Boot 3 (basics)                              │
+│  ☐ REST APIs com validação                             │
+│  ☐ JPA/Hibernate básico                                │
+│                                                         │
+│ Recursos:                                               │
+│  📚 Curso: "Java Completo" - Udemy                     │
+│  📚 Doc oficial: Spring Boot Reference                 │
+│  🎥 Vídeo: "REST API Best Practices"                   │
+│                                                         │
+│ Projeto Prático:                                        │
+│  🚀 API de gerenciamento de tarefas (CRUD completo)    │
+│     Stack: Java 17, Spring Boot, H2, JPA               │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ FASE 2: Intermediário (Mês 3-4)                        │
+├─────────────────────────────────────────────────────────┤
+│ Objetivos:                                              │
+│  ☐ PostgreSQL avançado (índices, otimização)          │
+│  ☐ Docker e containerização                            │
+│  ☐ Testes (JUnit 5, Mockito, TestContainers)          │
+│  ☐ Spring Security (JWT)                               │
+│                                                         │
+│ Projeto Prático:                                        │
+│  🚀 E-commerce API com autenticação                    │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ FASE 3: Avançado (Mês 5-6)                             │
+├─────────────────────────────────────────────────────────┤
+│ Objetivos:                                              │
+│  ☐ Arquitetura de Microserviços                        │
+│  ☐ Apache Kafka (produtor/consumidor)                  │
+│  ☐ Observabilidade (Prometheus, Grafana)               │
+│  ☐ Design Patterns (CQRS, Event Sourcing)             │
+│                                                         │
+│ Projeto Prático:                                        │
+│  🚀 Sistema de pedidos com microserviços e eventos     │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│ CERTIFICAÇÕES RECOMENDADAS                              │
+├─────────────────────────────────────────────────────────┤
+│  🎓 Oracle Certified Professional: Java SE              │
+│  🎓 Spring Professional Certification                   │
+│  🎓 AWS Certified Developer - Associate                 │
+└─────────────────────────────────────────────────────────┘
+\end{verbatim}
+
+\textbf{Backend necessário:}
+\begin{verbatim}
+POST /api/roadmap/gerar
+Body: {
+  "nivelAtual": "Júnior",
+  "objetivo": "Desenvolvedor Backend Sênior",
+  "stackDesejada": ["Java", "Spring Boot", "Microserviços"],
+  "tempoDisponivel": "6 meses",
+  "horasSemanais": 10
+}
+
+Response: {
+  "roadmapId": "uuid",
+  "titulo": "Júnior → Backend Sênior",
+  "duracaoTotal": "6 meses",
+  "fases": [
+    {
+      "numero": 1,
+      "nome": "Fundamentos",
+      "duracao": "2 meses",
+      "objetivos": [...],
+      "recursos": [...],
+      "projetosPraticos": [...]
+    }
+  ],
+  "certificacoes": [...],
+  "fromCache": false
+}
+\end{verbatim}
+
+\textbf{Lógica do Backend:}
+\begin{enumerate}
+    \item Verificar cache (hash do input)
+    \item Se não existe, chamar IA com prompt estruturado
+    \item IA retorna JSON com fases do roadmap
+    \item Salvar em \texttt{interacao\_ia}
+    \item Retornar para frontend
+\end{enumerate}
+
+\textbf{Prompt para IA:}
+\begin{verbatim}
+Você é um mentor de carreira em tecnologia.
+
+Crie um roadmap detalhado com base em:
+- Nível atual: Júnior
+- Objetivo: Desenvolvedor Backend Sênior
+- Stack desejada: Java, Spring Boot, Microserviços, Kafka
+- Tempo disponível: 6 meses
+- Dedicação: 10 horas/semana
+
+Estruture em 3-4 fases progressivas. Para cada fase:
+- Nome da fase
+- Duração estimada
+- Lista de objetivos de aprendizado
+- Recursos (cursos, livros, vídeos)
+- Projetos práticos (com stack sugerida)
+
+Ao final, sugira certificações relevantes.
+
+Retorne um JSON estruturado.
+\end{verbatim}
+
+\textbf{Features interativas no Frontend:}
+\begin{itemize}
+    \item Checkboxes para marcar progresso
+    \item Salvar progresso localmente (localStorage)
+    \item Exportar como PDF
+    \item Compartilhar roadmap (gerar link)
+\end{itemize}
+
+\textbf{Componentes a criar:}
+\begin{itemize}
+    \item \textbf{Frontend}: RoadmapPage.jsx, TimelineComponent.jsx
+    \item \textbf{Backend}:
+    \begin{itemize}
+        \item RoadmapController
+        \item RoadmapService
+        \item DTO: RoadmapRequestDTO, RoadmapResponseDTO
+    \end{itemize}
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Feature 4: Sugestão de Projetos para Portfólio}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\textbf{Objetivo:} IA sugere projetos práticos alinhados com gaps de skills do usuário.
+
+\textbf{Fluxo do Usuário:}
+\begin{enumerate}
+    \item Acessa página "Projetos"
+    \item Preenche preferências:
+    \begin{itemize}
+        \item Tecnologias que domina: [Java, PostgreSQL]
+        \item Tecnologias que quer aprender: [Docker, Kafka]
+        \item Área de interesse: Backend
+        \item Complexidade: Iniciante / Intermediário / Avançado
+    \end{itemize}
+    \item Clica em "Sugerir Projetos"
+    \item IA retorna 3-5 projetos detalhados
+\end{enumerate}
+
+\textbf{Exemplo de Projeto Sugerido:}
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────┐
+│ 🚀 Sistema de Notificações em Tempo Real               │
+├─────────────────────────────────────────────────────────┤
+│ Complexidade: Intermediário                            │
+│ Tempo estimado: 3-4 semanas                            │
+│                                                         │
+│ 📋 Descrição:                                           │
+│ Construa um sistema que processa eventos assíncronos   │
+│ usando Kafka e envia notificações via WebSocket.       │
+│                                                         │
+│ 🛠️ Stack sugerida:                                     │
+│  • Backend: Java 17, Spring Boot                       │
+│  • Mensageria: Apache Kafka                            │
+│  • Banco: PostgreSQL                                    │
+│  • Infra: Docker, Docker Compose                       │
+│                                                         │
+│ ✨ Funcionalidades principais:                         │
+│  ☐ API REST para criação de eventos                   │
+│  ☐ Producer Kafka para publicar eventos               │
+│  ☐ Consumer Kafka para processar filas                │
+│  ☐ WebSocket para notificações real-time              │
+│  ☐ Dashboard para monitorar eventos                    │
+│                                                         │
+│ 🎯 Diferenciais para portfólio:                        │
+│  • Demonstra conhecimento de arquitetura assíncrona   │
+│  • Mostra domínio de mensageria                        │
+│  • Containerização completa                            │
+│  • Pode ser usado em entrevistas técnicas             │
+│                                                         │
+│ 📚 Recursos para começar:                              │
+│  • Tutorial: "Kafka com Spring Boot"                   │
+│  • Doc oficial: Apache Kafka Quickstart               │
+│                                                         │
+│ [Ver Especificação Completa] [Favoritar]               │
+└─────────────────────────────────────────────────────────┘
+\end{verbatim}
+
+\textbf{Backend necessário:}
+\begin{verbatim}
+POST /api/projetos/sugerir
+Body: {
+  "tecnologiasDomina": ["Java", "PostgreSQL"],
+  "tecnologiasAprender": ["Docker", "Kafka"],
+  "area": "Backend",
+  "complexidade": "Intermediário"
+}
+
+Response: {
+  "projetos": [
+    {
+      "titulo": "Sistema de Notificações...",
+      "descricao": "...",
+      "stack": [...],
+      "funcionalidades": [...],
+      "diferenciais": [...],
+      "tempoEstimado": "3-4 semanas",
+      "recursos": [...]
+    }
+  ]
+}
+\end{verbatim}
+
+\textbf{Lógica do Backend:}
+\begin{enumerate}
+    \item Verificar cache
+    \item Chamar IA com contexto:
+    \begin{itemize}
+        \item Tecnologias que o usuário domina
+        \item Tecnologias que quer aprender
+        \item Complexidade desejada
+    \end{itemize}
+    \item IA gera 3-5 projetos relevantes
+    \item Salvar em cache
+    \item Retornar para frontend
+\end{enumerate}
+
+\textbf{Prompt para IA:}
+\begin{verbatim}
+Você é um mentor de carreira tech especializado em portfólios.
+
+Sugira 3 projetos práticos baseados em:
+- Tecnologias que o usuário domina: Java, PostgreSQL
+- Tecnologias que quer aprender: Docker, Kafka
+- Área: Backend
+- Complexidade: Intermediário
+
+Para cada projeto, retorne:
+- Título chamativo
+- Descrição (2-3 parágrafos)
+- Stack técnica completa
+- Lista de funcionalidades (5-7 features)
+- Diferenciais para portfólio
+- Tempo estimado de desenvolvimento
+- Recursos (links, tutoriais)
+
+Os projetos devem:
+1. Ser práticos e implementáveis
+2. Demonstrar skills valorizadas pelo mercado
+3. Ter escopo fechado (não muito amplos)
+4. Incorporar as tecnologias que o usuário quer aprender
+
+Retorne JSON estruturado.
+\end{verbatim}
+
+\textbf{Features extras:}
+\begin{itemize}
+    \item Sistema de favoritos (salvar projetos)
+    \item Marcar projeto como "Em andamento" ou "Concluído"
+    \item Link para GitHub template (se disponível)
+    \item Compartilhar projeto com amigos
+\end{itemize}
+
+\textbf{Componentes a criar:}
+\begin{itemize}
+    \item \textbf{Frontend}: ProjetosPage.jsx, ProjetoCard.jsx
+    \item \textbf{Backend}:
+    \begin{itemize}
+        \item ProjetoController
+        \item ProjetoService
+        \item DTO: ProjetoRequestDTO, ProjetoResponseDTO
+    \end{itemize}
+\end{itemize}
+
+%=============================================================================
+\section{Modelo de Dados}
+%=============================================================================
+
+\subsection{Entidades Existentes}
+
+\subsubsection{vaga\_bruta}
+Dados brutos coletados pelo scraper.
+
+\textbf{Campos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item titulo: VARCHAR(255)
+    \item descricao: TEXT
+    \item empresa: VARCHAR(255)
+    \item localizacao: VARCHAR(255) - nullable
+    \item modelo: VARCHAR(25) - Presencial/Híbrido/Remoto
+    \item url: VARCHAR(1024) - UNIQUE
+    \item palavra\_chave: VARCHAR(25) - termo de busca usado
+    \item data\_coleta: TIMESTAMP
+    \item processada: BOOLEAN - flag de processamento
+\end{itemize}
+
+\subsubsection{vaga\_processada}
+Vagas enriquecidas com análise de skills e senioridade.
+
+\textbf{Campos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item titulo: VARCHAR(255)
+    \item empresa: VARCHAR(255)
+    \item senioridade: VARCHAR(100) - Júnior/Pleno/Sênior/Especialista/Estágio
+    \item localizacao: VARCHAR(255) - nullable
+    \item modelo: VARCHAR(255) - Presencial/Híbrido/Remoto
+    \item area: VARCHAR(100) - Backend/Frontend/Full Stack/DevOps/Data
+    \item url: VARCHAR(1024)
+    \item skills: Many-to-Many com \texttt{skill}
+\end{itemize}
+
+\subsubsection{skill}
+Catálogo de tecnologias (89+ skills).
+
+\textbf{Campos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item nome: VARCHAR(255) - UNIQUE
+    \item vagas: Many-to-Many com \texttt{vaga\_processada}
+\end{itemize}
+
+\subsubsection{vaga\_skill\_rel}
+RelacionamentoMany-to-Many entre vagas e skills.
+
+\textbf{Campos:}
+\begin{itemize}
+    \item vaga\_id: UUID (FK → vaga\_processada)
+    \item skill\_id: UUID (FK → skill)
+\end{itemize}
+
+\subsubsection{interacao\_ia}
+Armazena todas as interações com IA (para cache e auditoria).
+
+\textbf{Campos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item tipo\_funcionalidade: VARCHAR(50) - ROADMAP/PROJETO/MATCH
+    \item parametros\_input: JSONB - input do usuário
+    \item hash\_input: VARCHAR(64) - SHA-256 do input (para cache)
+    \item resposta\_ia: JSONB - output da IA
+    \item modelo\_ia: VARCHAR(50) - gemini-1.5-flash / gpt-4o-mini
+    \item tokens\_utilizados: INTEGER
+    \item data\_criacao: TIMESTAMP
+\end{itemize}
+
+\textbf{Índices:}
+\begin{itemize}
+    \item (tipo\_funcionalidade, hash\_input) - para busca rápida de cache
+\end{itemize}
+
+\subsection{Novas Entidades (Opcional para futuro)}
+
+\subsubsection{usuario}
+Se quiser adicionar autenticação no futuro.
+
+\textbf{Campos sugeridos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item email: VARCHAR(255) - UNIQUE
+    \item senha\_hash: VARCHAR(255)
+    \item nome: VARCHAR(255)
+    \item data\_criacao: TIMESTAMP
+\end{itemize}
+
+\subsubsection{perfil\_usuario}
+Armazenar perfil do usuário para não precisar preencher sempre.
+
+\textbf{Campos sugeridos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item usuario\_id: UUID (FK)
+    \item skills: JSONB - array de skills
+    \item senioridade: VARCHAR(50)
+    \item area\_interesse: VARCHAR(50)
+    \item modelo\_preferido: VARCHAR(50)
+    \item localizacao: VARCHAR(255)
+\end{itemize}
+
+\subsubsection{progresso\_roadmap}
+Armazenar progresso do usuário em roadmaps.
+
+\textbf{Campos sugeridos:}
+\begin{itemize}
+    \item id: UUID (PK)
+    \item usuario\_id: UUID (FK)
+    \item roadmap\_id: UUID (FK → interacao\_ia)
+    \item objetivos\_concluidos: JSONB - array de IDs de objetivos
+    \item data\_inicio: TIMESTAMP
+    \item data\_ultima\_atualizacao: TIMESTAMP
+\end{itemize}
+
+%=============================================================================
+\section{APIs REST - Contratos Completos}
+%=============================================================================
+
+\subsection{Grupo: Insights (BI)}
+
+\textbf{Status:} \textcolor{green}{IMPLEMENTADO}
+
+\subsubsection{GET /api/insights/skills}
+Retorna top 10 tecnologias mais demandadas.
+
+\textbf{Response:}
+\begin{verbatim}
+[
+  {
+    "categoria": "Java",
+    "totalVagas": 1234
+  },
+  {
+    "categoria": "Python",
+    "totalVagas": 987
+  }
+]
+\end{verbatim}
+
+\subsubsection{GET /api/insights/senioridade}
+Distribuição de vagas por nível.
+
+\subsubsection{GET /api/insights/modelos}
+Distribuição: Presencial/Híbrido/Remoto.
+
+\subsubsection{GET /api/insights/localizacao}
+Top 10 cidades com mais vagas.
+
+\subsubsection{GET /api/insights/area}
+Distribuição por área (Backend, Frontend, etc).
+
+%-----------------------------------------------------------------------------
+
+\subsection{Grupo: Match de Vagas}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\subsubsection{POST /api/vagas/match}
+Busca vagas compatíveis com perfil do usuário usando IA.
+
+\textbf{Request Body:}
+\begin{verbatim}
+{
+  "skills": ["Java", "Spring Boot", "React", "Docker"],
+  "senioridade": "Pleno",
+  "modelo": "Remoto",
+  "localizacao": "São Paulo",  // opcional
+  "area": "Backend"
+}
+\end{verbatim}
+
+\textbf{Response:}
+\begin{verbatim}
+{
+  "matches": [
+    {
+      "vagaId": "uuid-123",
+      "titulo": "Desenvolvedor Backend Pleno",
+      "empresa": "XYZ Tech",
+      "localizacao": "São Paulo",
+      "modelo": "Remoto",
+      "compatibilidade": 95,
+      "skillsMatch": ["Java", "Spring Boot", "Docker"],
+      "skillsFaltam": ["Kubernetes", "AWS"],
+      "motivo": "Stack muito compatível com seu perfil...",
+      "url": "https://gupy.io/..."
+    }
+  ],
+  "totalMatches": 10,
+  "fromCache": false,
+  "tokensUtilizados": 450,
+  "modeloIA": "gemini-1.5-flash"
+}
+\end{verbatim}
+
+\subsubsection{GET /api/vagas/\{id\}}
+Buscar detalhes de uma vaga específica.
+
+\textbf{Response:}
+\begin{verbatim}
+{
+  "id": "uuid-123",
+  "titulo": "Dev Backend Pleno",
+  "empresa": "XYZ Tech",
+  "descricao": "Descrição completa...",
+  "skills": [
+    {"id": "uuid", "nome": "Java"},
+    {"id": "uuid", "nome": "Spring Boot"}
+  ],
+  "senioridade": "Pleno",
+  "localizacao": "São Paulo",
+  "modelo": "Remoto",
+  "area": "Backend",
+  "url": "https://..."
+}
+\end{verbatim}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Grupo: Roadmap}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\subsubsection{POST /api/roadmap/gerar}
+Gera roadmap personalizado usando IA.
+
+\textbf{Request Body:}
+\begin{verbatim}
+{
+  "nivelAtual": "Júnior",
+  "objetivo": "Desenvolvedor Backend Sênior",
+  "stackDesejada": ["Java", "Spring Boot", "Microserviços"],
+  "tempoDisponivel": "6 meses",
+  "horasSemanais": 10
+}
+\end{verbatim}
+
+\textbf{Response:}
+\begin{verbatim}
+{
+  "roadmapId": "uuid-456",
+  "titulo": "Júnior → Desenvolvedor Backend Sênior",
+  "duracaoTotal": "6 meses",
+  "fases": [
+    {
+      "numero": 1,
+      "nome": "Fundamentos",
+      "duracao": "2 meses",
+      "objetivos": [
+        "Dominar Java 17+",
+        "Spring Boot básico",
+        "REST APIs"
+      ],
+      "recursos": [
+        {
+          "tipo": "curso",
+          "titulo": "Java Completo",
+          "url": "https://udemy.com/..."
+        }
+      ],
+      "projetosPraticos": [
+        {
+          "titulo": "API de Tarefas",
+          "stack": ["Java 17", "Spring Boot", "H2"]
+        }
+      ]
+    }
+  ],
+  "certificacoes": [
+    "Oracle Certified Professional: Java SE",
+    "Spring Professional Certification"
+  ],
+  "fromCache": false,
+  "tokensUtilizados": 600
+}
+\end{verbatim}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Grupo: Projetos}
+
+\textbf{Status:} \textcolor{red}{NÃO IMPLEMENTADO}
+
+\subsubsection{POST /api/projetos/sugerir}
+IA sugere projetos para portfólio.
+
+\textbf{Request Body:}
+\begin{verbatim}
+{
+  "tecnologiasDomina": ["Java", "PostgreSQL"],
+  "tecnologiasAprender": ["Docker", "Kafka"],
+  "area": "Backend",
+  "complexidade": "Intermediário"
+}
+\end{verbatim}
+
+\textbf{Response:}
+\begin{verbatim}
+{
+  "projetos": [
+    {
+      "titulo": "Sistema de Notificações em Tempo Real",
+      "descricao": "Construa um sistema...",
+      "stack": ["Java 17", "Spring Boot", "Kafka", "PostgreSQL"],
+      "funcionalidades": [
+        "API REST para eventos",
+        "Producer Kafka",
+        "Consumer Kafka",
+        "WebSocket notifications"
+      ],
+      "diferenciais": [
+        "Demonstra arquitetura assíncrona",
+        "Mostra domínio de mensageria"
+      ],
+      "tempoEstimado": "3-4 semanas",
+      "recursos": [
+        {
+          "tipo": "tutorial",
+          "titulo": "Kafka com Spring Boot",
+          "url": "https://..."
+        }
+      ]
+    }
+  ],
+  "fromCache": false
+}
+\end{verbatim}
+
+%=============================================================================
+\section{Integração com IA Generativa}
+%=============================================================================
+
+\subsection{Escolha do Provedor}
+
+\textbf{Opção 1: Google Gemini (Recomendado)}
+
+\textbf{Vantagens:}
+\begin{itemize}
+    \item Free tier generoso (1500 requests/dia)
+    \item Latência baixa
+    \item Boa qualidade de output
+    \item Suporte a JSON mode
+\end{itemize}
+
+\textbf{Modelo sugerido:} gemini-1.5-flash (rápido e barato)
+
+\textbf{Endpoint:}
+\begin{verbatim}
+POST https://generativelanguage.googleapis.com/v1beta/
+     models/gemini-1.5-flash:generateContent?key=API_KEY
+\end{verbatim}
+
+%-----------------------------------------------------------------------------
+
+\textbf{Opção 2: OpenAI}
+
+\textbf{Vantagens:}
+\begin{itemize}
+    \item Qualidade de output superior
+    \item Melhor entendimento de contexto
+    \item Structured outputs (JSON garantido)
+\end{itemize}
+
+\textbf{Desvantagens:}
+\begin{itemize}
+    \item Pago desde o início
+    \item Mais caro que Gemini
+\end{itemize}
+
+\textbf{Modelo sugerido:} gpt-4o-mini (custo-benefício)
+
+%-----------------------------------------------------------------------------
+
+\subsection{Estratégia de Cache}
+
+\textbf{Por que cache é crítico:}
+\begin{itemize}
+    \item Reduz custos com API de IA
+    \item Melhora latência (resposta instantânea)
+    \item Evita chamadas redundantes
+\end{itemize}
+
+\textbf{Implementação:}
+\begin{enumerate}
+    \item \textbf{Antes de chamar IA:}
+    \begin{itemize}
+        \item Gerar hash SHA-256 do input (JSON serializado)
+        \item Buscar em \texttt{interacao\_ia} por (tipo, hash)
+        \item Se encontrado e recente (< 7 dias), retornar do cache
+    \end{itemize}
+
+    \item \textbf{Após chamar IA:}
+    \begin{itemize}
+        \item Salvar resposta em \texttt{interacao\_ia}
+        \item Incluir: input, hash, output, tokens, modelo
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Exemplo de hash:}
+\begin{verbatim}
+Input JSON:
+{
+  "funcionalidade": "ROADMAP",
+  "nivelAtual": "Júnior",
+  "objetivo": "Backend Sênior"
+}
+
+Hash SHA-256:
+a7f3b2c1d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+\end{verbatim}
+
+\textbf{Taxa de hit esperada:}
+\begin{itemize}
+    \item Roadmaps: 40-50\% (combinações comuns se repetem)
+    \item Match: 20-30\% (perfis semelhantes)
+    \item Projetos: 30-40\%
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Rate Limiting}
+
+\textbf{Por que implementar:}
+\begin{itemize}
+    \item Evitar abuso da API
+    \item Controlar custos
+    \item Proteger quota do provedor de IA
+\end{itemize}
+
+\textbf{Estratégia sugerida:}
+\begin{itemize}
+    \item \textbf{Por IP}: 10 requests/minuto
+    \item \textbf{Por funcionalidade}:
+    \begin{itemize}
+        \item Match: 5 requests/hora
+        \item Roadmap: 3 requests/hora
+        \item Projetos: 5 requests/hora
+    \end{itemize}
+\end{itemize}
+
+\textbf{Implementação:}
+\begin{itemize}
+    \item Redis com TTL para contadores
+    \item Interceptor no Spring Boot
+    \item Retornar HTTP 429 (Too Many Requests) quando exceder
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{Monitoramento de Custos}
+
+\textbf{Métricas a rastrear:}
+\begin{itemize}
+    \item Total de tokens consumidos (por dia/mês)
+    \item Custo estimado (tokens × preço do modelo)
+    \item Taxa de cache hit
+    \item Latência média de chamadas
+\end{itemize}
+
+\textbf{Tabela de custos (estimativa):}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Modelo} & \textbf{Input (1M tokens)} & \textbf{Output (1M tokens)} & \textbf{Total/request} \\
+\hline
+gemini-1.5-flash & \$0.075 & \$0.30 & \$0.0002 \\
+gpt-4o-mini & \$0.15 & \$0.60 & \$0.0004 \\
+\hline
+\end{tabular}
+
+\textbf{Estimativa de consumo:}
+\begin{itemize}
+    \item 1000 usuários/mês
+    \item 3 requests/usuário (média)
+    \item 50\% cache hit
+    \item 1500 chamadas reais
+    \item Custo total: \$0.30-0.60/mês (Gemini)
+\end{itemize}
+
+%=============================================================================
+\section{Roadmap de Implementação}
+%=============================================================================
+
+\subsection{Visão Geral das Fases}
+
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Fase} & \textbf{Descrição} & \textbf{Duração} & \textbf{Complexidade} \\
+\hline
+1 & Setup e Infraestrutura IA & 1 semana & Baixa \\
+2 & Feature: Match de Vagas & 2 semanas & Alta \\
+3 & Feature: Roadmap Personalizado & 1.5 semanas & Média \\
+4 & Feature: Projetos Portfólio & 1 semana & Média \\
+5 & Frontend: Dashboard + Páginas & 2 semanas & Alta \\
+6 & Polimento e Testes & 1 semana & Média \\
+\hline
+\textbf{TOTAL} & & \textbf{8-9 semanas} & \\
+\hline
+\end{tabular}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 1: Setup e Infraestrutura IA (1 semana)}
+
+\textbf{Objetivo:} Preparar base para integração com IA.
+
+\textbf{Tarefas Backend:}
+\begin{enumerate}
+    \item Adicionar dependências no \texttt{pom.xml}:
+    \begin{itemize}
+        \item spring-boot-starter-webflux (cliente HTTP)
+        \item jackson-databind (JSON)
+        \item commons-codec (hash SHA-256)
+    \end{itemize}
+
+    \item Configurar \texttt{application.properties}:
+    \begin{itemize}
+        \item API key da IA
+        \item Modelo a usar
+        \item Parâmetros (temperature, max tokens)
+    \end{itemize}
+
+    \item Criar classes base:
+    \begin{itemize}
+        \item \textbf{GeminiService}: Encapsula chamadas à API Gemini
+        \item \textbf{PromptBuilderService}: Constrói prompts estruturados
+        \item \textbf{CacheService}: Gerencia cache de respostas IA
+        \item \textbf{HashService}: Gera SHA-256 de inputs
+    \end{itemize}
+
+    \item Atualizar \texttt{InteracaoIARepository}:
+    \begin{itemize}
+        \item Método: findByTipoAndHash()
+        \item Query customizada
+    \end{itemize}
+
+    \item Testar integração básica:
+    \begin{itemize}
+        \item Criar endpoint de teste: \texttt{POST /api/ia/test}
+        \item Enviar prompt simples
+        \item Validar resposta
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Integração com Gemini funcionando
+    \item Cache implementado
+    \item Teste básico validado
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 2: Feature Match de Vagas (2 semanas)}
+
+\textbf{Objetivo:} Implementar matching inteligente entre perfil e vagas.
+
+\textbf{Tarefas Backend (Semana 1):}
+\begin{enumerate}
+    \item Criar DTOs:
+    \begin{itemize}
+        \item \textbf{MatchRequestDTO}: Recebe perfil do usuário
+        \item \textbf{MatchResponseDTO}: Retorna vagas ranqueadas
+        \item \textbf{VagaMatchDTO}: Representa vaga com score
+    \end{itemize}
+
+    \item Criar query customizada:
+    \begin{itemize}
+        \item \textbf{findCandidateVagas()}: Pré-filtro no banco
+        \item Busca vagas com pelo menos 1 skill match
+        \item Filtra por senioridade e modelo
+        \item Retorna top 50 candidatas
+    \end{itemize}
+
+    \item Implementar \textbf{VagaMatchService}:
+    \begin{itemize}
+        \item Orquestra fluxo completo
+        \item Valida input
+        \item Busca candidatas no banco
+        \item Verifica cache
+        \item Chama IA se necessário
+        \item Salva em cache
+        \item Retorna resultado
+    \end{itemize}
+
+    \item Criar prompt para IA:
+    \begin{itemize}
+        \item Template estruturado
+        \item Inclui perfil + vagas candidatas
+        \item Pede ranking JSON
+    \end{itemize}
+
+    \item Implementar \textbf{VagaMatchController}:
+    \begin{itemize}
+        \item \texttt{POST /api/vagas/match}
+        \item Validação de input
+        \item Tratamento de erros
+    \end{itemize}
+
+    \item Testar com Postman:
+    \begin{itemize}
+        \item Casos de teste variados
+        \item Validar cache funcionando
+        \item Verificar persistência
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Tarefas Frontend (Semana 2):}
+\begin{enumerate}
+    \item Criar página \textbf{VagasMatch.jsx}:
+    \begin{itemize}
+        \item Formulário de perfil (skills, senioridade, etc)
+        \item Multi-select para skills
+        \item Dropdowns para senioridade/modelo
+    \end{itemize}
+
+    \item Criar componente \textbf{VagaCard.jsx}:
+    \begin{itemize}
+        \item Exibe título, empresa, localização
+        \item Mostra score de compatibilidade
+        \item Lista skills match e gaps
+        \item Botão "Ver Detalhes"
+    \end{itemize}
+
+    \item Implementar estado:
+    \begin{itemize}
+        \item useState para formulário
+        \item useState para resultados
+        \item Loading state
+    \end{itemize}
+
+    \item Integrar com API:
+    \begin{itemize}
+        \item axios.post() para /api/vagas/match
+        \item Tratamento de erros
+        \item Loading spinner
+    \end{itemize}
+
+    \item Estilizar:
+    \begin{itemize}
+        \item Layout responsivo
+        \item Cards bonitos com gradientes
+        \item Indicador visual de score (barra/badge)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Backend funcionando e testado
+    \item Frontend consumindo API
+    \item UX fluida
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 3: Feature Roadmap Personalizado (1.5 semanas)}
+
+\textbf{Objetivo:} Gerar planos de estudo personalizados.
+
+\textbf{Tarefas Backend (3 dias):}
+\begin{enumerate}
+    \item Criar DTOs:
+    \begin{itemize}
+        \item \textbf{RoadmapRequestDTO}
+        \item \textbf{RoadmapResponseDTO}
+        \item \textbf{FaseRoadmapDTO}
+    \end{itemize}
+
+    \item Implementar \textbf{RoadmapService}:
+    \begin{itemize}
+        \item Lógica de cache
+        \item Chamar IA com prompt estruturado
+        \item Parsear resposta JSON
+    \end{itemize}
+
+    \item Criar prompt para IA:
+    \begin{itemize}
+        \item Template de roadmap
+        \item Pede fases, objetivos, recursos
+    \end{itemize}
+
+    \item Implementar \textbf{RoadmapController}:
+    \begin{itemize}
+        \item \texttt{POST /api/roadmap/gerar}
+    \end{itemize}
+
+    \item Testar
+\end{enumerate}
+
+\textbf{Tarefas Frontend (5 dias):}
+\begin{enumerate}
+    \item Criar página \textbf{RoadmapPage.jsx}:
+    \begin{itemize}
+        \item Formulário de objetivos
+        \item Campos: nível atual, objetivo, stack, tempo
+    \end{itemize}
+
+    \item Criar componente \textbf{TimelineRoadmap.jsx}:
+    \begin{itemize}
+        \item Exibe fases em timeline vertical
+        \item Checkboxes para objetivos
+        \item Accordions para expandir detalhes
+    \end{itemize}
+
+    \item Implementar localStorage:
+    \begin{itemize}
+        \item Salvar progresso localmente
+        \item Restaurar ao voltar à página
+    \end{itemize}
+
+    \item Integrar com API
+
+    \item Estilizar (timeline bonita com linhas conectoras)
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Roadmaps gerados com sucesso
+    \item Timeline visual interativa
+    \item Progresso persistente
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 4: Feature Projetos para Portfólio (1 semana)}
+
+\textbf{Objetivo:} Sugerir projetos práticos.
+
+\textbf{Tarefas Backend (2 dias):}
+\begin{enumerate}
+    \item Criar DTOs
+    \item Implementar \textbf{ProjetoService}
+    \item Criar prompt para IA
+    \item Implementar \textbf{ProjetoController}
+    \item Testar
+\end{enumerate}
+
+\textbf{Tarefas Frontend (3 dias):}
+\begin{enumerate}
+    \item Criar página \textbf{ProjetosPage.jsx}
+    \item Criar componente \textbf{ProjetoCard.jsx}:
+    \begin{itemize}
+        \item Card expandível
+        \item Lista de funcionalidades
+        \item Tags de stack
+    \end{itemize}
+    \item Integrar com API
+    \item Estilizar
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Projetos sugeridos com qualidade
+    \item Cards visualmente atraentes
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 5: Frontend - Dashboard e Navegação (2 semanas)}
+
+\textbf{Objetivo:} Criar interface completa e navegação.
+
+\textbf{Tarefas (Semana 1):}
+\begin{enumerate}
+    \item Setup React:
+    \begin{itemize}
+        \item \texttt{npx create-react-app frontend}
+        \item Instalar dependências (axios, react-router, recharts, tailwind)
+    \end{itemize}
+
+    \item Criar estrutura de pastas:
+    \begin{itemize}
+        \item /components
+        \item /pages
+        \item /services (API calls)
+        \item /utils
+    \end{itemize}
+
+    \item Implementar navegação:
+    \begin{itemize}
+        \item React Router
+        \item Navbar com links
+        \item Rotas para cada página
+    \end{itemize}
+
+    \item Criar página \textbf{DashboardPage.jsx}:
+    \begin{itemize}
+        \item Consumir endpoints de insights
+        \item Gráficos com Recharts
+        \item Layout em grid (2 colunas)
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Tarefas (Semana 2):}
+\begin{enumerate}
+    \item Estilizar todas as páginas:
+    \begin{itemize}
+        \item Design system consistente (cores, tipografia)
+        \item Responsividade (mobile-first)
+        \item Animações sutis (transitions)
+    \end{itemize}
+
+    \item Implementar estados globais:
+    \begin{itemize}
+        \item Context API ou Redux
+        \item Loading states
+        \item Error handling
+    \end{itemize}
+
+    \item Criar componentes reutilizáveis:
+    \begin{itemize}
+        \item Button
+        \item Input
+        \item Card
+        \item Spinner
+    \end{itemize}
+
+    \item Otimizações:
+    \begin{itemize}
+        \item Code splitting
+        \item Lazy loading
+        \item Memoization
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Aplicação React completa
+    \item Todas as páginas funcionais
+    \item UX profissional
+\end{itemize}
+
+%-----------------------------------------------------------------------------
+
+\subsection{FASE 6: Polimento e Testes (1 semana)}
+
+\textbf{Objetivo:} Garantir qualidade e preparar para produção.
+
+\textbf{Tarefas:}
+\begin{enumerate}
+    \item \textbf{Testes Backend}:
+    \begin{itemize}
+        \item Testes unitários (JUnit 5) para Services
+        \item Testes de integração para Controllers
+        \item Mocks para chamadas de IA
+        \item Coverage > 70\%
+    \end{itemize}
+
+    \item \textbf{Testes Frontend}:
+    \begin{itemize}
+        \item Jest para componentes
+        \item React Testing Library
+        \item Testes de integração (user flows)
+    \end{itemize}
+
+    \item \textbf{Performance}:
+    \begin{itemize}
+        \item Otimizar queries (EXPLAIN ANALYZE)
+        \item Adicionar índices se necessário
+        \item Configurar pool de conexões
+        \item Minificar assets frontend
+    \end{itemize}
+
+    \item \textbf{Segurança}:
+    \begin{itemize}
+        \item Rate limiting implementado
+        \item Validação de inputs
+        \item Sanitização de dados
+        \item CORS configurado corretamente
+    \end{itemize}
+
+    \item \textbf{Documentação}:
+    \begin{itemize}
+        \item README completo
+        \item Swagger/OpenAPI para endpoints
+        \item Comentários em código complexo
+        \item Guia de setup
+    \end{itemize}
+
+    \item \textbf{DevOps}:
+    \begin{itemize}
+        \item Docker Compose atualizado
+        \item CI/CD básico (GitHub Actions)
+        \item Script de seed de dados
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Entregas:}
+\begin{itemize}
+    \item Aplicação testada e otimizada
+    \item Documentação completa
+    \item Pronto para deploy
+\end{itemize}
+
+%=============================================================================
+\section{Stack Tecnológica Completa}
+%=============================================================================
+
+\subsection{Backend}
+
+\begin{itemize}
+    \item \textbf{Framework}: Spring Boot 3.5.7
+    \item \textbf{Language}: Java 25
+    \item \textbf{ORM}: Spring Data JPA (Hibernate)
+    \item \textbf{Database}: PostgreSQL 15
+    \item \textbf{Cache}: Redis (Spring Cache)
+    \item \textbf{HTTP Client}: WebClient (Spring WebFlux)
+    \item \textbf{Migrations}: Flyway 9.22.0
+    \item \textbf{Build}: Maven
+    \item \textbf{Utilities}: Lombok, Jackson, Apache Commons Codec
+\end{itemize}
+
+\subsection{Data Pipeline}
+
+\begin{itemize}
+    \item \textbf{Language}: Python 3.10+
+    \item \textbf{Web Scraping}: Playwright
+    \item \textbf{Database Driver}: psycopg2-binary
+    \item \textbf{Text Processing}: unidecode
+    \item \textbf{Scheduling}: Cron ou Apache Airflow (futuro)
+    \item \textbf{Config}: python-dotenv
+\end{itemize}
+
+\subsection{Frontend}
+
+\begin{itemize}
+    \item \textbf{Framework}: React 18
+    \item \textbf{Language}: JavaScript (ou TypeScript)
+    \item \textbf{Routing}: React Router 6
+    \item \textbf{HTTP Client}: Axios
+    \item \textbf{Charts}: Recharts ou D3.js
+    \item \textbf{Styling}: Tailwind CSS ou Material-UI
+    \item \textbf{State Management}: Context API ou Redux Toolkit
+    \item \textbf{Build}: Vite ou Create React App
+\end{itemize}
+
+\subsection{IA Generativa}
+
+\begin{itemize}
+    \item \textbf{Provedor}: Google Gemini (primário) ou OpenAI (alternativa)
+    \item \textbf{Modelo}: gemini-1.5-flash ou gpt-4o-mini
+    \item \textbf{API}: REST via WebClient
+\end{itemize}
+
+\subsection{DevOps}
+
+\begin{itemize}
+    \item \textbf{Containerização}: Docker + Docker Compose
+    \item \textbf{CI/CD}: GitHub Actions
+    \item \textbf{Versionamento}: Git + GitHub
+    \item \textbf{Deploy}: Render, Railway ou Heroku (opções)
+\end{itemize}
+
+%=============================================================================
+\section{Pontos de Atenção e Boas Práticas}
+%=============================================================================
+
+\subsection{Performance}
+
+\begin{enumerate}
+    \item \textbf{Cache é obrigatório}:
+    \begin{itemize}
+        \item IA é lenta (2-5 segundos/request)
+        \item Cache pode reduzir 40-50\% das chamadas
+        \item Use Redis para insights + PostgreSQL para IA
+    \end{itemize}
+
+    \item \textbf{Pré-filtro no banco}:
+    \begin{itemize}
+        \item Não envie 10k vagas para IA
+        \item Filtre para top 50 candidatas primeiro
+        \item Use índices (senioridade, modelo, skills)
+    \end{itemize}
+
+    \item \textbf{Paginação}:
+    \begin{itemize}
+        \item Nunca retorne lista completa
+        \item Limite: 10-20 resultados
+    \end{itemize}
+
+    \item \textbf{Lazy loading}:
+    \begin{itemize}
+        \item Carregue skills sob demanda (fetch lazy)
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Custos com IA}
+
+\begin{enumerate}
+    \item \textbf{Preferir Gemini}:
+    \begin{itemize}
+        \item 1500 requests/dia grátis
+        \item Suficiente para MVP
+    \end{itemize}
+
+    \item \textbf{Cache agressivo}:
+    \begin{itemize}
+        \item 50\% de economia fácil
+    \end{itemize}
+
+    \item \textbf{Monitorar tokens}:
+    \begin{itemize}
+        \item Salvar em \texttt{interacao\_ia}
+        \item Dashboard de métricas
+    \end{itemize}
+
+    \item \textbf{Rate limiting}:
+    \begin{itemize}
+        \item Evita abuso
+        \item Protege orçamento
+    \end{itemize}
+\end{enumerate}
+
+\subsection{UX}
+
+\begin{enumerate}
+    \item \textbf{Loading states}:
+    \begin{itemize}
+        \item IA demora 2-5s
+        \item Mostre spinner + mensagem ("Analisando vagas...")
+    \end{itemize}
+
+    \item \textbf{Feedback visual}:
+    \begin{itemize}
+        \item Score de compatibilidade em cores (verde > 80\%, amarelo 60-80\%, vermelho < 60\%)
+    \end{itemize}
+
+    \item \textbf{Empty states}:
+    \begin{itemize}
+        \item "Nenhuma vaga compatível encontrada"
+        \item Sugerir ajustar filtros
+    \end{itemize}
+
+    \item \textbf{Erro handling}:
+    \begin{itemize}
+        \item Mensagens amigáveis
+        \item Botão para retry
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Segurança}
+
+\begin{enumerate}
+    \item \textbf{Validação de inputs}:
+    \begin{itemize}
+        \item Bean Validation no backend
+        \item Sanitização de strings
+    \end{itemize}
+
+    \item \textbf{Rate limiting}:
+    \begin{itemize}
+        \item Por IP + por funcionalidade
+    \end{itemize}
+
+    \item \textbf{Secrets}:
+    \begin{itemize}
+        \item API key em variável de ambiente
+        \item NUNCA commitar .env
+    \end{itemize}
+
+    \item \textbf{CORS}:
+    \begin{itemize}
+        \item Configurar origins permitidas
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Qualidade de Código}
+
+\begin{enumerate}
+    \item \textbf{Separation of Concerns}:
+    \begin{itemize}
+        \item Controller: apenas roteamento
+        \item Service: lógica de negócio
+        \item Repository: acesso a dados
+    \end{itemize}
+
+    \item \textbf{DRY (Don't Repeat Yourself)}:
+    \begin{itemize}
+        \item Extrair lógica comum (CacheService, PromptBuilderService)
+    \end{itemize}
+
+    \item \textbf{Error handling consistente}:
+    \begin{itemize}
+        \item Exception handlers globais
+        \item DTOs de erro padronizados
+    \end{itemize}
+
+    \item \textbf{Logging}:
+    \begin{itemize}
+        \item Log chamadas de IA (debug)
+        \item Log erros (error)
+        \item Estruturado (JSON)
+    \end{itemize}
+\end{enumerate}
+
+%=============================================================================
+\section{Expansões Futuras}
+%=============================================================================
+
+\subsection{Features Adicionais}
+
+\begin{enumerate}
+    \item \textbf{Autenticação e Usuários}:
+    \begin{itemize}
+        \item Login/Register (Spring Security + JWT)
+        \item Perfil persistente
+        \item Histórico de interações
+    \end{itemize}
+
+    \item \textbf{Favoritos e Listas}:
+    \begin{itemize}
+        \item Salvar vagas favoritas
+        \item Criar listas personalizadas
+        \item Exportar como PDF
+    \end{itemize}
+
+    \item \textbf{Notificações}:
+    \begin{itemize}
+        \item Email quando nova vaga compatível aparecer
+        \item Push notifications (PWA)
+    \end{itemize}
+
+    \item \textbf{Análises Temporais}:
+    \begin{itemize}
+        \item Trends de tecnologias (últimos 6 meses)
+        \item Crescimento/declínio de skills
+        \item Previsão de demanda futura
+    \end{itemize}
+
+    \item \textbf{Chat Assistente}:
+    \begin{itemize}
+        \item Chat genérico para dúvidas
+        \item Complementa as páginas principais
+    \end{itemize}
+
+    \item \textbf{Integração com LinkedIn}:
+    \begin{itemize}
+        \item Importar perfil automaticamente
+        \item Sugerir melhorias no perfil
+    \end{itemize}
+
+    \item \textbf{Múltiplas Fontes de Dados}:
+    \begin{itemize}
+        \item Scraping de LinkedIn, Indeed, Glassdoor
+        \item Agregação de dados
+    \end{itemize}
+
+    \item \textbf{Salary Insights}:
+    \begin{itemize}
+        \item Faixas salariais por stack/senioridade
+        \item Comparação de mercado
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Melhorias Técnicas}
+
+\begin{enumerate}
+    \item \textbf{Embeddings para Match}:
+    \begin{itemize}
+        \item Usar embeddings de IA (mais preciso que IA generativa)
+        \item Vector database (Pinecone, Weaviate)
+        \item Busca por similaridade
+    \end{itemize}
+
+    \item \textbf{Machine Learning Local}:
+    \begin{itemize}
+        \item Treinar modelo para detectar senioridade
+        \item Classificação de área (Backend/Frontend/etc)
+        \item Reduz dependência de IA generativa
+    \end{itemize}
+
+    \item \textbf{GraphQL}:
+    \begin{itemize}
+        \item Alternativa ao REST
+        \item Queries mais flexíveis
+    \end{itemize}
+
+    \item \textbf{Real-time Updates}:
+    \begin{itemize}
+        \item WebSockets para notificações
+        \item Server-Sent Events para dashboard
+    \end{itemize}
+
+    \item \textbf{Mobile App}:
+    \begin{itemize}
+        \item React Native
+        \item Compartilhar lógica com web
+    \end{itemize}
+\end{enumerate}
+
+%=============================================================================
+\section{Conclusão}
+%=============================================================================
+
+\subsection{Resumo Executivo}
+
+\textbf{Tech Career Pulse} é uma plataforma completa de inteligência de mercado tech que:
+
+\begin{itemize}
+    \item \textbf{Coleta} dados reais de vagas via web scraping
+    \item \textbf{Processa} e enriquece com NLP (skills, senioridade)
+    \item \textbf{Analisa} tendências e gera insights visuais
+    \item \textbf{Utiliza IA} contextualmente em 3 funcionalidades:
+    \begin{enumerate}
+        \item Match inteligente de vagas
+        \item Roadmaps de carreira personalizados
+        \item Sugestões de projetos para portfólio
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Diferenciais}
+
+\begin{enumerate}
+    \item \textbf{Dados reais}: Não é chatbot genérico, usa vagas reais
+    \item \textbf{IA contextual}: Integrada em workflows, não chat isolado
+    \item \textbf{Full-stack showcase}: Demonstra habilidades completas
+    \item \textbf{Arquitetura robusta}: Padrões profissionais (MVC, cache, migrations)
+    \item \textbf{UX profissional}: Páginas dedicadas, não chat linear
+\end{enumerate}
+
+\subsection{Métricas de Sucesso}
+
+\textbf{Para portfólio:}
+\begin{itemize}
+    \item Projeto complexo e bem documentado
+    \item Múltiplas tecnologias integradas
+    \item Use cases reais e práticos
+    \item Código limpo e testado
+\end{itemize}
+
+\textbf{Para usuários:}
+\begin{itemize}
+    \item > 1000 vagas no banco
+    \item Taxa de match > 80\% de satisfação
+    \item Roadmaps acionáveis e práticos
+    \item Tempo de resposta < 3 segundos
+\end{itemize}
+
+\subsection{Próximos Passos}
+
+\begin{enumerate}
+    \item Revisar este documento
+    \item Configurar ambiente de desenvolvimento
+    \item Seguir roadmap de implementação (8-9 semanas)
+    \item Testar incrementalmente
+    \item Deploy em produção
+    \item Documentar no GitHub
+    \item Adicionar ao portfólio
+\end{enumerate}
+
+\subsection{Recursos Úteis}
+
+\begin{itemize}
+    \item \textbf{Gemini API}: \url{https://ai.google.dev/gemini-api}
+    \item \textbf{Spring Boot Docs}: \url{https://spring.io/projects/spring-boot}
+    \item \textbf{React Docs}: \url{https://react.dev}
+    \item \textbf{Recharts}: \url{https://recharts.org}
+    \item \textbf{Tailwind CSS}: \url{https://tailwindcss.com}
+\end{itemize}
+
+\vspace{1cm}
+
+\begin{center}
+\textit{Documento gerado em \today}
+
+\textit{Tech Career Pulse - Versão 1.0}
+\end{center}
+
+\end{document}
